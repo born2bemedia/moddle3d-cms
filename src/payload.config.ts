@@ -93,10 +93,10 @@ export default buildConfig({
         categories: {
           fields: ["title", "subtitle", "description"],
         },
-        pricingCategories: {
+        "pricing-categories": {
           fields: ["title", "description"],
         },
-        pricingPackages: {
+        "pricing-packages": {
           fields: ["title", "description", "includes", "button_text"],
         },
         trends: {
