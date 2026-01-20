@@ -157,6 +157,25 @@ export async function translateCollection({
               ) {
                 // Array or nested object field (e.g., includes array with feature fields)
                 try {
+                  console.log(
+                    `🔄 Processing array/object field "${fieldName}":`,
+                    JSON.stringify(doc[fieldName], null, 2),
+                  );
+
+                  // Check if it's an array and if it has items
+                  if (Array.isArray(doc[fieldName])) {
+                    if (doc[fieldName].length === 0) {
+                      console.warn(
+                        `⚠️ Field "${fieldName}" is an empty array, skipping translation`,
+                      );
+                      // Don't set empty arrays, let Payload handle fallback
+                      continue;
+                    }
+                    console.log(
+                      `📦 Array "${fieldName}" has ${doc[fieldName].length} items`,
+                    );
+                  }
+
                   // Create a deep copy of the structure
                   const fieldValue = JSON.parse(JSON.stringify(doc[fieldName]));
 
@@ -171,13 +190,28 @@ export async function translateCollection({
                     deeplService,
                   );
 
-                  dataForUpdate[fieldName] = translatedField[fieldName];
+                  console.log(
+                    `✅ Translated field "${fieldName}":`,
+                    JSON.stringify(translatedField[fieldName], null, 2),
+                  );
+
+                  // Ensure the translated field is set, even if it's an array
+                  if (
+                    translatedField[fieldName] !== undefined &&
+                    translatedField[fieldName] !== null
+                  ) {
+                    dataForUpdate[fieldName] = translatedField[fieldName];
+                  } else {
+                    console.warn(
+                      `⚠️ Translated field "${fieldName}" is undefined or null`,
+                    );
+                  }
                 } catch (error) {
                   console.error(
                     `Failed to translate nested field ${fieldName}:`,
                     error,
                   );
-                  dataForUpdate[fieldName] = doc[fieldName];
+                  // Don't set the field if translation failed
                 }
               }
             } catch (error) {
@@ -243,6 +277,30 @@ export async function translateCollection({
                 };
               }
             }
+          }
+        }
+
+        // Ensure array fields are properly formatted for Payload
+        // Payload requires arrays to be explicitly set, even if empty
+        for (const fieldName of collectionOptions.fields) {
+          if (
+            cleanData[fieldName] !== undefined &&
+            Array.isArray(cleanData[fieldName])
+          ) {
+            // Ensure array structure is preserved
+            // IMPORTANT: Remove 'id' fields from array items as Payload generates them automatically
+            cleanData[fieldName] = cleanData[fieldName].map((item: any) => {
+              if (typeof item === "object" && item !== null) {
+                // Create a copy without the 'id' field
+                const { id, ...itemWithoutId } = item;
+                return itemWithoutId;
+              }
+              return item;
+            });
+            console.log(
+              `📦 Final array data for "${fieldName}" (ids removed):`,
+              cleanData[fieldName],
+            );
           }
         }
 
